@@ -187,7 +187,7 @@ export const deleteTransaction = async (req, res) => {
     }
 }
 
-// Get the total expense for each month (from trabsaction model)
+// Get the total expense for each month (from transaction model)
 export const getTotalExpenses = async (req, res) => {
     try {
         // Authorize user
@@ -239,12 +239,21 @@ export const getTopExpenseCategories = async (req, res) => {
         const decoded = await verifyAccessToken(accessToken);
         if (!decoded?.id) return res.status(401).json({ error: "Unauthorized. Invalid token" });
 
+        // Get current month's date range
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
         // Get expenses
         const result = await transactionModel.aggregate([
             {
                 $match: {
                     userId: mongoose.Types.ObjectId.createFromHexString(decoded.id),
-                    type: "expense"
+                    type: "expense",
+                    createdAt: {
+                        $gte: startOfMonth,
+                        $lte: endOfMonth
+                    }
                 }
             },
             {
