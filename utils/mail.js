@@ -26,7 +26,6 @@ export const Mail = async ({ email, subject, html }) => {
         return sentMail;
 
     } catch (error) {
-        console.log("Error sending mail:", error);
         return error;
     }
 }

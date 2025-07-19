@@ -3,6 +3,7 @@ import tokenModel from "../models/tokenSchema.js";
 import transactionModel from "../models/transactionsSchema.js";
 import mongoose from "mongoose";
 import savingsModel from "../models/savingsSchema.js";
+import fs from "fs/promises";
 import bcrypt from "bcryptjs";
 import { Mail } from "../utils/mail.js";
 import { generateTokens, verifyAccessToken, verifyRefreshToken } from "../utils/tokenUtils.js";
@@ -46,7 +47,6 @@ export const registerUser = async (req, res) => {
         res.status(200).json({ message: "User registered.", accessToken });
 
     } catch (error) {
-        console.log("Error registering user:", error);
         res.status(500).json({ error: "Error registering user due to server error" });
     }
 }
@@ -83,7 +83,6 @@ export const login = async (req, res) => {
         res.status(200).json({ message: "Login successfully", accessToken });
 
     } catch (error) {
-        console.log("Error login user:", error);
         res.status(500).json({ error: "Error loging user due to server error" })
     }
 }
@@ -111,7 +110,6 @@ export const logout = async (req, res) => {
         res.status(200).json({ message: "Logout successfully" })
 
     } catch (error) {
-        console.log("Error logout user:", error);
         res.status(500).json({ error: "Error loging out user due to server error" });
     }
 }
@@ -144,7 +142,6 @@ export const logoutAll = async (req, res) => {
         res.status(200).json({ message: "All sessions cleared" });
 
     } catch (error) {
-        console.log("Error clearing session:", error);
         res.status(500).json({ error: "Error clearing sessions due to server error" });
     }
 }
@@ -178,98 +175,7 @@ export const refreshToken = async (req, res) => {
         res.status(200).json({ message: "Token refreshed", accessToken });
 
     } catch (error) {
-        console.log("Error Refreshing token:", error);
         res.status(500).json({ error: "Error refreshing token due to server error." });
-    }
-}
-
-// Update profile image
-export const updateProfileImage = async (req, res) => {
-    try {
-        const { removeProfileImage = false } = req.body;
-        const localPath = req.file?.path;
-        const accessToken = req.headers?.authorization?.split(" ")?.[1];
-        if (!accessToken) return res.status(401).json({ error: "Unauthorized. Token is missing." });
-
-        // Verify token
-        const decoded = await verifyAccessToken(accessToken);
-        if (!decoded || !decoded.id) return res.status(401).json({ error: "Unauthorized. Invalid token." });
-
-        // Find user
-        const user = await userModel.findById(decoded.id);
-        if (!user) return res.status(404).json({ error: "No user found" });
-
-        // Remove profile image
-        if ((removeProfileImage || removeProfileImage === 'true') && user.profileImage !== "/user.png") {
-            const publicId = extractPublicId(user.profileImage);
-            await cloudinary.uploader.destroy(publicId);
-
-            user.profileImage = "/user.png";
-            await user.save();
-            return res.status(200).json({ error: "Profile iamge removed" })
-        };
-
-        // Update profile image
-        if (localPath) {
-            if (user.profileImage && user.profileImage !== "/user.png") {
-                const publicId = extractPublicId(user.profileImage);
-                await cloudinary.uploader.destroy(publicId);
-            }
-
-            // Upload new image
-            const result = await cloudinary.uploader.upload(localPath, {
-                folder: "profile-images",
-                public_id: `user_${user._id}_${Date.now()}`,
-                format: "webp",
-                transformation: [{
-                    width: 400,
-                    height: 400,
-                    gravity: "face",
-                    crop: "fill"
-                }]
-            });
-
-            user.profileImage = result.secure_url;
-            await user.save();
-            return res.status(200).json({ message: "Profile image updated", profileImage: user.profileImage });
-        }
-
-        res.status(400).json({ error: "No image provided or remove flag set incorrectly." });
-
-    } catch (error) {
-        console.log("Error updating profile image:", error);
-        res.status(500).json({ error: "Error updating profile image due to server error" })
-    }
-}
-
-// Update profile info
-export const updateProfile = async (req, res) => {
-    try {
-        // Validating data
-        const validatedInfo = validateProfileInfo.safeParse(req.body);
-        if (!validatedInfo.success) {
-            return res.status(400).json({ error: "Invalid profile info structure", details: validatedInfo.error.flatten() });
-        }
-
-        // Extracting data
-        const { name, income = 0, goal = 0 } = validatedInfo.data;
-        const accessToken = req.headers?.authorization?.split(" ")?.[1];
-        if (!accessToken) return res.status(401).json({ error: "Unauthorized. Token is missing." });
-        const decoded = await verifyAccessToken(accessToken);
-        if (!decoded || !decoded.id) return res.status(401).json({ error: "Unauthorized. Invalid token." });
-
-        // Find user & update
-        const userId = mongoose.Types.ObjectId.createFromHexString(decoded.id);
-        const updated = await userModel.findOneAndUpdate(
-            { _id: userId },
-            { $set: { name, income, goal } },
-            { new: true }
-        );
-        res.status(200).json({ message: "Profile updated", updated });
-
-    } catch (error) {
-        console.log("Error updating profile info:", error);
-        res.status(500).json({ error: "Error updating profile info due to server error" });
     }
 }
 
@@ -343,7 +249,6 @@ export const sendEmailUpdationLink = async (req, res) => {
         res.status(201).json({ message: "Link sent" });
 
     } catch (error) {
-        console.log("Error sending email updation link:", error);
         res.status(500).json({ error: "Error sending mail (email updation link) due to server error" });
     }
 }
@@ -375,7 +280,6 @@ export const updateEmail = async (req, res) => {
         res.status(200).json({ message: "Email updated" });
 
     } catch (error) {
-        console.log("Error updating email:", error);
         res.status(500).json({ error: "Error updating email due to server error" });
     }
 }
@@ -407,7 +311,6 @@ export const changePassword = async (req, res) => {
         res.status(200).json({ message: "Password updated" });
 
     } catch (error) {
-        console.log("Error changing password:", error);
         res.status(500).json({ error: "Error changing password due to server error" });
     }
 }
@@ -479,7 +382,6 @@ export const sendPasswordResetLink = async (req, res) => {
         res.status(201).json({ message: "Link sent" });
 
     } catch (error) {
-        console.log("Error sending password reset link:", error);
         res.status(500).json({ error: "Error sending mail (password reset link) due to server error" });
     }
 }
@@ -520,7 +422,6 @@ export const resetPassword = async (req, res) => {
         res.status(200).json({ message: "Password updated" });
 
     } catch (error) {
-        console.log("Error reseting password:", error);
         res.status(500).json({ error: "Error reseting password due to server error" });
     }
 }
@@ -588,7 +489,6 @@ export const sendAccountDeletionOTP = async (req, res) => {
         res.status(201).json({ message: "OTP sent" });
 
     } catch (error) {
-        console.log("Error generating account deletion OTP:", error);
         res.status(500).json({ error: "Error generating OTP due to server error" });
     }
 }
@@ -648,8 +548,98 @@ export const deleteAccount = async (req, res) => {
         res.status(200).json({ message: "Account and all data deleted successfully." });
 
     } catch (error) {
-        console.log("Error deleting account:", error);
         res.status(500).json({ error: "Error deleting account due to server error" });
+    }
+}
+
+// Update profile image
+export const updateProfileImage = async (req, res) => {
+    try {
+        const { removeProfileImage = false } = req.body;
+        const localPath = req.file?.path;
+        const accessToken = req.headers?.authorization?.split(" ")?.[1];
+        if (!accessToken) return res.status(401).json({ error: "Unauthorized. Token is missing." });
+
+        // Verify token
+        const decoded = await verifyAccessToken(accessToken);
+        if (!decoded || !decoded.id) return res.status(401).json({ error: "Unauthorized. Invalid token." });
+
+        // Find user
+        const user = await userModel.findById(decoded.id);
+        if (!user) return res.status(404).json({ error: "No user found" });
+
+        // Remove profile image
+        if ((removeProfileImage || removeProfileImage === 'true') && user.profileImage !== "/user.png") {
+            const publicId = extractPublicId(user.profileImage);
+            await cloudinary.uploader.destroy(publicId);
+
+            user.profileImage = "/user.png";
+            await user.save();
+            return res.status(200).json({ error: "Profile iamge removed" })
+        };
+
+        // Update profile image
+        if (localPath) {
+            if (user.profileImage && user.profileImage !== "/user.png") {
+                const publicId = extractPublicId(user.profileImage);
+                await cloudinary.uploader.destroy(publicId);
+            }
+
+            // Upload new image
+            const result = await cloudinary.uploader.upload(localPath, {
+                folder: "profile-images",
+                public_id: `user_${user._id}_${Date.now()}`,
+                format: "webp",
+                transformation: [{
+                    width: 400,
+                    height: 400,
+                    gravity: "face",
+                    crop: "fill"
+                }]
+            });
+
+            // Delete the temporary file
+            await fs.unlink(localPath);
+
+            user.profileImage = result.secure_url;
+            await user.save();
+            return res.status(200).json({ message: "Profile image updated", profileImage: user.profileImage });
+        }
+
+        res.status(400).json({ error: "No image provided or remove flag set incorrectly." });
+
+    } catch (error) {
+        res.status(500).json({ error: "Error updating profile image due to server error" })
+    }
+}
+
+// Update profile info
+export const updateProfile = async (req, res) => {
+    try {
+        // Validating data
+        const validatedInfo = validateProfileInfo.safeParse(req.body);
+        if (!validatedInfo.success) {
+            return res.status(400).json({ error: "Invalid profile info structure", details: validatedInfo.error.flatten() });
+        }
+
+        // Extracting data
+        const { name, income = 0, goal = 0 } = validatedInfo.data;
+        const accessToken = req.headers?.authorization?.split(" ")?.[1];
+        if (!accessToken) return res.status(401).json({ error: "Unauthorized. Token is missing." });
+        const decoded = await verifyAccessToken(accessToken);
+        if (!decoded || !decoded.id) return res.status(401).json({ error: "Unauthorized. Invalid token." });
+
+        // Find user & update
+        const userId = mongoose.Types.ObjectId.createFromHexString(decoded.id);
+        const updated = await userModel.findOneAndUpdate(
+            { _id: userId },
+            { $set: { name, income, goal } },
+            { new: true }
+        );
+        res.status(200).json({ message: "Profile updated", updated });
+
+    } catch (error) {
+        res.status(500).json({ error: "Error updating profile info due to server error" });
     }
 }
 
@@ -690,10 +680,9 @@ export const getData = async (req, res) => {
         const totalTransaction = await transactionModel.countDocuments();
 
         if (!user || user.length === 0) return res.status(404).json({ error: "User not found" });
-        res.status(200).json({ message: "Data fetched", user: { ...user[0], totalTransaction} });
+        res.status(200).json({ message: "Data fetched", user: { ...user[0], totalTransaction } });
 
     } catch (error) {
-        console.log("Error getting data:", error);
         res.status(500).json({ error: "Error getting data due to server error" });
     }
 }
@@ -742,10 +731,9 @@ export const getFilteredTransactions = async (req, res) => {
         const total = await transactionModel.countDocuments(query);
         const transactions = await transactionModel.find(query).sort({ date: -1 }).skip(skip).limit(limit);
 
-        res.status(200).json({ transactions, total, page, pages: Math.ceil(total / limit)});
+        res.status(200).json({ transactions, total, page, pages: Math.ceil(total / limit) });
 
     } catch (error) {
-        console.error("Error in getFilteredTransactions:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };

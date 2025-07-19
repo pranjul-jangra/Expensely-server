@@ -2,6 +2,7 @@ import savingsModel from "../models/savingsSchema.js";
 import userModel from "../models/userSchema.js";
 import transactionModel from "../models/transactionsSchema.js";
 import { verifyAccessToken } from "../utils/tokenUtils.js";
+import fs from "fs/promises";
 import { validateSavings, validateTransactions } from "../utils/zodValidation.js";
 import cloudinary from "../middlewares/uploadImage.js";
 import { extractPublicId } from "../utils/extractPublicId.js";
@@ -37,7 +38,6 @@ export const updateSavings = async (req, res) => {
         return res.status(200).json({ message: "Savings updated" });
 
     } catch (error) {
-        console.log("Error updating savings:", error);
         res.status(500).json({ error: "Error updating savings due to server error" });
     }
 }
@@ -96,6 +96,9 @@ export const upsertTransactions = async (req, res) => {
             });
         }
 
+        // Delete temporary files
+        await fs.unlink(localPath);
+
         // Update existing transaction
         if (transactionId) {
             const existingDoc = await transactionModel.findOne({ userId: mongoose.Types.ObjectId.createFromHexString(decoded.id), transactionId });
@@ -140,7 +143,6 @@ export const upsertTransactions = async (req, res) => {
         res.status(201).json({ message: "Transaction added" });
 
     } catch (error) {
-        console.error("Error adding/updating transaction:", error);
         res.status(500).json({ error: "Server error while processing transaction" });
     }
 };
@@ -182,7 +184,6 @@ export const deleteTransaction = async (req, res) => {
         res.status(200).json({ message: "Transaction deleted" });
 
     } catch (error) {
-        console.log("Error deleting transaction:", error);
         res.status(500).json({ error: "Error deleting transaction due to server error" });
     }
 }
@@ -226,7 +227,6 @@ export const getTotalExpenses = async (req, res) => {
         });
 
     } catch (error) {
-        console.log("Error getting expenses:", error);
         res.status(500).json({ error: "Error getting expenses due to server error" });
     }
 }
@@ -279,7 +279,6 @@ export const getTopExpenseCategories = async (req, res) => {
         res.status(200).json({ categories: data });
 
     } catch (error) {
-        console.error("Error fetching top categories:", error);
         res.status(500).json({ error: "Server error while fetching top categories" });
     }
 };
