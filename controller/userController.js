@@ -599,7 +599,9 @@ export const updateProfileImage = async (req, res) => {
             });
 
             // Delete the temporary file
-            await fs.unlink(localPath);
+            if (localPath) {
+                await fs.unlink(localPath);
+            }
 
             user.profileImage = result.secure_url;
             await user.save();

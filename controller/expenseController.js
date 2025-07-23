@@ -97,7 +97,9 @@ export const upsertTransactions = async (req, res) => {
         }
 
         // Delete temporary files
-        await fs.unlink(localPath);
+        if (localPath) {
+            await fs.unlink(localPath);
+        }
 
         // Update existing transaction
         if (transactionId) {
@@ -143,6 +145,7 @@ export const upsertTransactions = async (req, res) => {
         res.status(201).json({ message: "Transaction added" });
 
     } catch (error) {
+        console.log("Error adding transaction:", error);
         res.status(500).json({ error: "Server error while processing transaction" });
     }
 };
