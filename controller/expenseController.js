@@ -145,7 +145,6 @@ export const upsertTransactions = async (req, res) => {
         res.status(201).json({ message: "Transaction added" });
 
     } catch (error) {
-        console.log("Error adding transaction:", error);
         res.status(500).json({ error: "Server error while processing transaction" });
     }
 };
