@@ -9,6 +9,7 @@ import expenseRouter from './routes/expenseRouter.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import cookieParser from "cookie-parser";
 import jwt from 'jsonwebtoken';
+import keepAliveRouter from './routes/keepAliveRouter.js';
 
 // Configs ===========================================================================================
 dotenv.config();
@@ -87,6 +88,7 @@ app.set('trust proxy', true);
 // Routes ============================================================================================
 app.use('/api/user', userRouter);
 app.use('/api/expense', expenseRouter);
+app.use('/api/alive', keepAliveRouter);
 
 
 
