@@ -96,4 +96,4 @@ app.use('/api/alive', keepAliveRouter);
 app.use(errorHandler);
 
 // Listen to port ====================================================================================
-app.listen(port, () => console.log("Server is running"));
+app.listen(port, () => console.log("Server is running", port));

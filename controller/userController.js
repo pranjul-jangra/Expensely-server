@@ -679,10 +679,21 @@ export const getData = async (req, res) => {
             }
         ]);
 
+        // Expense of current month
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        const currentMonthExpense = await transactionModel.aggregate([
+            { $match: { userId, type: "expense", date: { $gte: startOfMonth, $lte: endOfMonth } } },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+
         const totalTransaction = await transactionModel.countDocuments();
+        const expenseThisMonth = currentMonthExpense[0]?.total || 0;
 
         if (!user || user.length === 0) return res.status(404).json({ error: "User not found" });
-        res.status(200).json({ message: "Data fetched", user: { ...user[0], totalTransaction } });
+        res.status(200).json({ message: "Data fetched", user: { ...user[0], totalTransaction, expense: expenseThisMonth } });
 
     } catch (error) {
         res.status(500).json({ error: "Error getting data due to server error" });
